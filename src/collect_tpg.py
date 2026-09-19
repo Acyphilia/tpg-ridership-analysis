@@ -72,7 +72,6 @@ def get_available_months():
 
     return months
 
-print(get_available_months())
 
 def get_month_bounds(month):
     period = pd.Period(month, freq="M")
