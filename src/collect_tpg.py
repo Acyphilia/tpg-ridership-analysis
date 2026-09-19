@@ -1,20 +1,24 @@
 from pathlib import Path
 import requests
 import pandas as pd
+#my imports needed
 
+#information about the api
 RECORDS_URL = (
     "https://opendata.tpg.ch/api/explore/v2.1/catalog/datasets/"
     "montees-par-arret-par-ligne/records"
 )
 
-EXPORT_URL = (
+#get the data set
+exports_url = (
     "https://opendata.tpg.ch/api/explore/v2.1/catalog/datasets/"
     "montees-par-arret-par-ligne/exports/csv"
 )
 
-PROJECT_ROOT = Path(__file__).resolve().parent.parent
+PROJECT_ROOT = Path(__file__).resolve().parent.parent 
 
 RAW_TPG_PATH = PROJECT_ROOT / "data" / "raw" / "tpg"
+##change later to tpg data
 
 def get_latest_date():
     params = {
@@ -104,4 +108,82 @@ def get_month_record_count(month):
 
     return data["total_count"]
 
-print(get_month_record_count("2026-08"))
+
+def download_month(month, overwrite=False):
+    start_date, next_month = get_month_bounds(month)
+
+    # Expected number of rows according to the API
+    expected_rows = get_month_record_count(month)
+
+    # Create folder for the year
+    year = month[:4]
+
+    year_folder = RAW_TPG_PATH / year
+    year_folder.mkdir(parents=True, exist_ok=True)
+
+    # Final file location
+    file_path = year_folder / f"{month}.csv"
+
+    # Don't download again unless we explicitly ask
+    if file_path.exists() and not overwrite:
+        print(f"{month}: file already exists — skipped")
+        return file_path
+
+    # Filter TPG export to this month
+    params = {
+        "where": (
+            f"date >= date'{start_date}' "
+            f"AND date < date'{next_month}'"
+        ),
+        "delimiter": ","
+    }
+
+    print(f"Downloading {month}...")
+
+    response = requests.get(
+        exports_url,
+        params=params,
+        timeout=120
+    )
+
+    response.raise_for_status()
+
+    # Save exact API response
+    with open(file_path, "wb") as file:
+        file.write(response.content)
+
+    # Verify downloaded data
+    downloaded_df = pd.read_csv(
+        file_path,
+        encoding="utf-8-sig"
+    )
+
+    downloaded_rows = len(downloaded_df)
+
+    if downloaded_rows == expected_rows:
+        print(
+            f" {month}: {downloaded_rows:,} rows downloaded successfully"
+        )
+    else:
+        print(
+            f" {month}: expected {expected_rows:,} rows, "
+            f"but downloaded {downloaded_rows:,}"
+        )
+
+    return file_path
+
+
+
+def backfill_all_months():
+    months = get_available_months()
+    total_months = len(months)
+
+    for index, month in enumerate(months, start=1):
+        month_str = str(month)
+
+        print(f"\n[{index}/{total_months}] Processing {month_str}")
+
+        download_month(month_str)
+
+if __name__ == "__main__":
+    backfill_all_months()
