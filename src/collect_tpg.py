@@ -82,4 +82,27 @@ def get_month_bounds(month):
 
     return start_date, next_month
 
-print(get_month_bounds("2026-08"))
+def get_month_record_count(month):
+    start_date, next_month = get_month_bounds(month)
+
+    params = {
+        "where": (
+            f"date >= date'{start_date}' "
+            f"AND date < date'{next_month}'"
+        ),
+        "limit": 1
+    }
+
+    response = requests.get(
+        RECORDS_URL,
+        params=params,
+        timeout=30
+    )
+
+    response.raise_for_status()
+
+    data = response.json()
+
+    return data["total_count"]
+
+print(get_month_record_count("2026-08"))
