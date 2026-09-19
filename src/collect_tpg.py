@@ -83,5 +83,3 @@ def get_month_bounds(month):
     return start_date, next_month
 
 print(get_month_bounds("2026-08"))
-
-get_month_record_count("2026-08")
