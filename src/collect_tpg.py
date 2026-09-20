@@ -112,9 +112,6 @@ def get_month_record_count(month):
 def download_month(month, overwrite=False):
     start_date, next_month = get_month_bounds(month)
 
-    # Expected number of rows according to the API
-    expected_rows = get_month_record_count(month)
-
     # Create folder for the year
     year = month[:4]
 
@@ -128,6 +125,9 @@ def download_month(month, overwrite=False):
     if file_path.exists() and not overwrite:
         print(f"{month}: file already exists — skipped")
         return file_path
+
+    # Expected number of rows according to the API
+    expected_rows = get_month_record_count(month)
 
     # Filter TPG export to this month
     params = {
@@ -173,7 +173,7 @@ def download_month(month, overwrite=False):
     return file_path
 
 
-
+#when i rebuild everything i want to backfill all months
 def backfill_all_months():
     months = get_available_months()
     total_months = len(months)
@@ -185,5 +185,36 @@ def backfill_all_months():
 
         download_month(month_str)
 
+#day to day or month to month updates,
+def update_data():
+    months = get_available_months()
+
+    if len(months) == 0:
+        print("No TPG data available.")
+        return
+
+    latest_month = str(months[-1])
+
+    previous_month = None
+
+    if len(months) >= 2:
+        previous_month = str(months[-2])
+
+    print(f"Latest TPG month: {latest_month}")
+
+    for month in months:
+        month_str = str(month)
+
+        if month_str in {latest_month, previous_month}:
+            print(f"\nRefreshing {month_str}")
+
+            download_month(
+                month_str,
+                overwrite=True
+            )
+
+        else:
+            download_month(month_str)
+
 if __name__ == "__main__":
-    backfill_all_months()
+    update_data()
